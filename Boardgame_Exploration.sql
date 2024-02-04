@@ -5,7 +5,7 @@ Skills used: Joins, CTE's, Temp Tables, Windows Functions, Aggregate Functions, 
 
 --View imported Data from each table
 
-SELECT * FROM board_games
+SELECT year_published FROM board_games
 
 SELECT * FROM themes
 
@@ -237,7 +237,7 @@ SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published
 SELECT DISTINCT theme, year_published, ROUND(SUM(num_owned) OVER (PARTITION BY theme, year_published ),2) AS total_sales
 FROM most_owned_cte 
 WHERE theme IS NOT NULL
-	AND year_published <> 0
+	AND year_published > 1899
 ORDER BY theme,year_published 
 
 
