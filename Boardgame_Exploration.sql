@@ -45,30 +45,34 @@ WHERE num_owned <> 0
 	AND ROUND(((CAST(num_user_ratings as decimal)/(CAST(num_owned as decimal))))*100,0) > 50
 
 
+--most popular game difficulty amongst game owners
 
---most popular game difficulty amonst game owners
-
-SELECT game_weight as "Game Dificulty", COUNT(*) as preference_count
+SELECT game_weight as "Game Dificulty", SUM(num_owned) as preference_count
 FROM board_games
-WHERE game_weight IN (0,1,2,3,4,5)
+WHERE game_weight IN (1,2,3,4,5)
+	AND num_owned > 0
+	AND num_owned IS NOT NULL
 GROUP BY game_weight
 ORDER BY preference_count DESC
-
-
 
 
 --how does GameWeight effect desirebility(game want) 
 
 SELECT game_weight as "Game Dificulty", COUNT(*) as preference_count, sum(num_wish) as wish_listed
 FROM board_games
-WHERE game_weight IN (0,1,2,3,4,5)
+WHERE game_weight IN (1,2,3,4,5)
 GROUP BY game_weight
 ORDER BY wish_listed DESC
 
 
+--Top 10 sold Board game
 
+SELECT bgg_id, title, year_published, num_owned
+	FROM board_games
+ORDER BY num_owned DESC
+LIMIT 10
+			
 --Most owned Board game
-
 SELECT bgg_id, title, year_published, num_owned
 	FROM board_games
 WHERE num_owned = (
@@ -196,8 +200,125 @@ SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published
 	FROM title_themes INNER JOIN board_games
 		ON title_themes.bgg_id = board_games.bgg_id
 )
-SELECT DISTINCT theme, ROUND(AVG(num_owned) OVER (PARTITION BY theme),2) AS avg_sales_per_theme
+SELECT DISTINCT theme, ROUND(AVG(num_owned) OVER (PARTITION BY theme),2) AS avg_sales
 FROM most_owned_cte 
 WHERE year_published BETWEEN 2010 AND 2023
-ORDER BY avg_sales_per_theme DESC
+AND theme IS NOT NULL
+ORDER BY avg_sales DESC
 
+
+--total sold per specified theme per year
+
+
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT DISTINCT theme, ROUND(SUM(num_owned) OVER (PARTITION BY year_published),2) AS sum_sales_per_theme, year_published
+FROM most_owned_cte 
+WHERE theme IS NOT NULL
+	AND theme = 'adventure'
+	AND year_published <> 0
+ORDER BY year_published DESC
+
+--total sold per all theme per year
+
+
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT DISTINCT theme, year_published, ROUND(SUM(num_owned) OVER (PARTITION BY theme, year_published ),2) AS total_sales
+FROM most_owned_cte 
+WHERE theme IS NOT NULL
+	AND year_published <> 0
+ORDER BY theme,year_published 
+
+
+
+--sum sold per specified player per year
+
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published,max_players
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT DISTINCT max_players, ROUND(SUM(num_owned) OVER (PARTITION BY max_players),2) AS total_sales
+FROM most_owned_cte 
+WHERE theme IS NOT NULL
+	AND year_published <> 0
+	AND max_players < 11
+	AND max_players > 0
+ORDER BY total_sales DESC
+
+--sum sold per specified sales rating 
+
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published,avg_rating
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT DISTINCT ROUND(avg_rating), ROUND(SUM(num_owned) OVER (PARTITION BY ROUND(avg_rating)),2) AS total_sales
+FROM most_owned_cte 
+WHERE theme IS NOT NULL
+	AND year_published <> 0
+	AND avg_rating > 0
+ORDER BY total_sales DESC
+
+--total sold by difficulty
+
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published,game_weight
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT DISTINCT game_weight, ROUND(SUM(num_owned) OVER (PARTITION BY game_weight),2) AS total_sales
+FROM most_owned_cte 
+WHERE theme IS NOT NULL
+	AND year_published <> 0
+	AND game_weight > 0
+ORDER BY total_sales DESC
+
+--sales per theme in specified year 2021 at a time
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT theme,sum(num_owned) as year_total
+FROM most_owned_cte 
+	WHERE year_published = 2021
+	AND theme IS NOT NULL
+GROUP BY theme
+
+--avg sold per all theme per year
+
+
+WITH most_owned_cte
+AS
+(
+SELECT title_themes.bgg_id, title_themes.title, num_owned,theme,year_published
+	FROM title_themes INNER JOIN board_games
+		ON title_themes.bgg_id = board_games.bgg_id
+)
+SELECT DISTINCT theme, year_published, ROUND(AVG(num_owned) OVER (PARTITION BY theme, year_published ),2) AS total_sales
+FROM most_owned_cte 
+WHERE theme IS NOT NULL
+	AND year_published <> 0
+ORDER BY theme,year_published 
+
+			
